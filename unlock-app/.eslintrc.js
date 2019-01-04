@@ -1,38 +1,52 @@
 module.exports = {
-  "extends": ["standard", "eslint:recommended", "plugin:react/recommended"],
-  "env": {
-    "es6": true,
-    "node": true,
-    "browser": true,
-    "jest": true
+  extends: [
+    'standard',
+    'airbnb',
+    'eslint:recommended',
+    'plugin:react/recommended',
+    'prettier',
+  ],
+  env: {
+    es6: true,
+    node: true,
+    browser: true,
+    jest: true,
   },
-  globals: {},
+  plugins: ['mocha'],
+  parser: 'babel-eslint',
   rules: {
-    "indent": [
-      "error",
-      2
+    'react/jsx-wrap-multilines': false,
+    'react/prefer-stateless-function': [2],
+    indent: ['error', 2],
+    'linebreak-style': ['error', 'unix'],
+    quotes: ['error', 'single'],
+    semi: ['error', 'never'],
+    'no-multiple-empty-lines': [
+      'error',
+      {
+        max: 1,
+        maxEOF: 0,
+        maxBOF: 0,
+      },
     ],
-    "linebreak-style": [
-      "error",
-      "unix"
+    'brace-style': 0,
+    'react/forbid-prop-types': 2,
+    'comma-dangle': [2, 'always-multiline'],
+    'eol-last': ['error'],
+    'jsx-a11y/anchor-is-valid': [
+      'error',
+      {
+        components: ['Link'],
+        specialLink: ['hrefLeft', 'hrefRight'],
+        aspects: ['invalidHref', 'preferButton'],
+      },
     ],
-    "quotes": [
-      "error",
-      "single"
-    ],
-    "semi": [
-      "error",
-      "never"
-    ],
-    "no-multiple-empty-lines": [
-      "error", {
-        "max": 1,
-        "maxEOF": 0,
-        "maxBOF": 0
-      }
-    ],
-    "brace-style": [2, "1tbs", { "allowSingleLine": true }],
-    "react/forbid-prop-types": 2,
-    "comma-dangle": [2, "always-multiline"],
-  }
-};
+    'mocha/no-exclusive-tests': 'error',
+    'react/jsx-filename-extension': [0, { extensions: ['.js', '.jsx'] }],
+    'import/no-named-as-default': 0,
+    'import/no-named-as-default-member': 0,
+    'standard/computed-property-even-spacing': 0,
+    'standard/object-curly-even-spacing': 0,
+    'standard/array-bracket-even-spacing': 0,
+  },
+}

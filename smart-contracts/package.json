@@ -13,27 +13,36 @@
   "dependencies": {
     "babel-polyfill": "^6.26.0",
     "babel-register": "^6.26.0",
-    "bignumber.js": "^6.0.0",
-    "eslint": "^4.18.2",
+    "bignumber.js": "^8.0.1",
+    "eslint": "^5.7.0",
     "ethereumjs-units": "^0.2.0",
-    "ganache-core": "^2.1.0",
-    "openzeppelin-solidity": "1.9.0",
-    "truffle": "^4.1.11",
-    "truffle-contract": "^3.0.4",
-    "web3-utils": "^1.0.0-beta.34"
+    "openzeppelin-eth": "^2.0.2",
+    "shelljs": "^0.8.3",
+    "truffle": "^4.1.14",
+    "truffle-contract": "^3.0.6",
+    "web3-utils": "^1.0.0-beta.36",
+    "zos": "^v2.1.0-rc.0",
+    "zos-lib": "^2.0.2"
   },
   "devDependencies": {
-    "eslint-config-standard": "^11.0.0",
-    "eslint-plugin-import": "^2.9.0",
-    "eslint-plugin-mocha": "^4.12.1",
-    "eslint-plugin-node": "^6.0.1",
-    "eslint-plugin-promise": "^3.6.0",
-    "eslint-plugin-standard": "^3.0.1",
-    "solhint": "^1.2.1"
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-mocha": "^5.2.0",
+    "eslint-plugin-node": "^8.0.0",
+    "eslint-plugin-promise": "^4.0.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "remix-ide": "^0.7.5",
+    "remixd": "^0.1.8-alpha.6",
+    "solhint": "^1.4.0"
   },
   "scripts": {
-    "test": "truffle test",
-    "lint": "solhint contracts/**/*.sol"
+    "remix": "remixd -s contracts --remix-ide http://localhost:8080 --read-only",
+    "test": "truffle test --network test",
+    "lint": "solhint contracts/**/*.sol",
+    "ci": "npm run lint && npm run test",
+    "build": "truffle compile --reset",
+    "deploy": "truffle deploy",
+    "zos": "zos"
   },
   "author": "",
   "license": "ISC"

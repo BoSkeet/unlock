@@ -1,30 +1,19 @@
+process.env.NODE_ENV = 'test'
+
 const Unlock = artifacts.require('./Unlock.sol')
+const Zos = require('zos')
+const TestHelper = Zos.TestHelper
+const shared = require('./behaviors/shared')
 
 contract('Unlock', (accounts) => {
-  let unlock
-
-  before(() => {
-    return Unlock.deployed()
-      .then(_unlock => {
-        unlock = _unlock
-      })
-  })
-
-  it('should have an owner', () => {
-    return unlock.owner().then((owner) => {
-      assert.equal(owner, accounts[0])
+  const proxyAdmin = accounts[1]
+  const unlockOwner = accounts[2]
+  describe('Standard Unlock contract', function () {
+    beforeEach(async function () {
+      const project = await TestHelper({ from: proxyAdmin })
+      const proxy = await project.createProxy(Unlock, { initMethod: 'initialize', initArgs: [unlockOwner], initFrom: unlockOwner })
+      this.unlock = await Unlock.at(proxy.address)
     })
-  })
-
-  it('should have initialized grossNetworkProduct', () => {
-    return unlock.grossNetworkProduct().then((grossNetworkProduct) => {
-      assert.equal(grossNetworkProduct.toNumber(), 0)
-    })
-  })
-
-  it('should have initialized totalDiscountGranted', () => {
-    return unlock.totalDiscountGranted().then((totalDiscountGranted) => {
-      assert.equal(totalDiscountGranted.toNumber(), 0)
-    })
+    shared.shouldBehaveLikeV1(accounts, unlockOwner)
   })
 })

@@ -1,124 +1,184 @@
+/* eslint no-console: 0 */ // TODO: remove me when this is clean
+
+import React from 'react'
 import { LOCATION_CHANGE } from 'react-router-redux'
-import { CREATE_LOCK, SET_LOCK, WITHDRAW_FROM_LOCK, setLock, resetLock } from '../actions/lock'
-import { PURCHASE_KEY, SET_KEY, setKey } from '../actions/key'
-import { SET_ACCOUNT, LOAD_ACCOUNT, CREATE_ACCOUNT, setAccount, resetAccountBalance } from '../actions/accounts'
-import { SET_NETWORK } from '../actions/network'
-import { setTransaction } from '../actions/transaction'
+import {
+  ADD_LOCK,
+  CREATE_LOCK,
+  WITHDRAW_FROM_LOCK,
+  UPDATE_LOCK,
+  addLock,
+  lockDeployed,
+  updateLock,
+} from '../actions/lock'
+import { PURCHASE_KEY, updateKey, addKey } from '../actions/key'
+import { setAccount, updateAccount, SET_ACCOUNT } from '../actions/accounts'
+import { setNetwork, SET_NETWORK } from '../actions/network'
+import { setError } from '../actions/error'
+import { SET_PROVIDER } from '../actions/provider'
+import { addTransaction, updateTransaction } from '../actions/transaction'
+import { LOCK_PATH_NAME_REGEXP } from '../constants'
 
 import Web3Service from '../services/web3Service'
-import { lockUnlessKeyIsValid } from '../services/iframeService'
 
 // This middleware listen to redux events and invokes the services APIs.
-export default function lockMiddleware ({ getState, dispatch }) {
+// It also listen to events from web3Service and dispatches corresponding actions
+// TODO: consider if on events we should only trigger more actions instead of calling web3Service directly
+export default function lockMiddleware({ getState, dispatch }) {
+  // Buffer of actions waiting for connection
+  const actions = []
 
   const web3Service = new Web3Service()
 
-  return function (next) {
-    return function (action) {
+  /**
+   * When an account was changed, we dispatch the corresponding action
+   * TODO: consider cleaning up state when the account is a different one
+   */
+  web3Service.on('account.changed', account => {
+    dispatch(setAccount(account))
+    web3Service.getPastUnlockTransactionsForUser(account.address)
+  })
 
-      if (!web3Service.ready) {
-        // We return to make sure other middleware actions are not processed
-        return web3Service.connect({
-          provider: 'HTTP',
-          network: getState().network,
-        }).then((account) => {
-          // we dispatch again!
-          dispatch(action)
-          dispatch(setAccount(account))
-        }).catch(() => {
-          // we could not connect
-          // TODO: show error to user
-        })
-      }
+  web3Service.on('account.updated', (account, update) => {
+    dispatch(updateAccount(update))
+  })
 
-      if (action.type === LOAD_ACCOUNT) {
-        web3Service.loadAccount(action.privateKey)
-          .then((account) => {
-            return dispatch(setAccount(account))
-          })
-      } else if (action.type === CREATE_ACCOUNT) {
-        web3Service.createAccount()
-          .then((account) => {
-            return dispatch(setAccount(account))
-          })
-      } else if (action.type === SET_NETWORK) {
-        web3Service.connect({
-          provider: 'HTTP',
-          network: {
-            name: action.network,
-            account: {},
-          },
-        }).then((account) => {
-          return dispatch(setAccount(account))
-        }).catch(() => {
-          // we could not connect
-          // TODO: show error to user
-        })
+  /**
+   * When a lock was saved, we update it, as well as its transaction and
+   * refresh the balance of its owner and refresh its content
+   */
+  web3Service.on('lock.saved', (lock, address) => {
+    dispatch(lockDeployed(lock, address))
+    dispatch(
+      updateTransaction(lock.transaction, {
+        lock: address,
+      })
+    )
+    web3Service.refreshAccountBalance(getState().account)
+    web3Service.getLock(address)
+  })
+
+  /**
+   * The Lock was changed.
+   * Should we get the balance of the lock owner?
+   */
+  web3Service.on('lock.updated', (address, update) => {
+    const lock = getState().locks[address]
+    if (lock) {
+      dispatch(updateLock(lock.address, update))
+    } else {
+      dispatch(addLock(address, update))
+    }
+  })
+
+  /**
+   * When a key was saved, we reload the corresponding lock because
+   * it might have been updated (balance, outstanding keys...)
+   */
+  web3Service.on('key.saved', (keyId, key) => {
+    web3Service.getLock(key.lock)
+    web3Service.refreshAccountBalance(key.owner)
+    web3Service.getKeyByLockForOwner(key.lock, key.owner)
+  })
+
+  web3Service.on('key.updated', (id, update) => {
+    if (getState().keys[id]) {
+      dispatch(updateKey(id, update))
+    } else {
+      // That key does not exist yet
+      dispatch(addKey(id, update))
+    }
+  })
+
+  web3Service.on('transaction.new', transaction => {
+    dispatch(addTransaction(transaction))
+  })
+
+  web3Service.on('transaction.updated', (transaction, update) => {
+    dispatch(updateTransaction(transaction.hash, update))
+  })
+
+  web3Service.on('error', error => {
+    dispatch(setError(<p>{error.message}</p>))
+  })
+
+  /**
+   * When the network has changed, we need to get a new account
+   * as well as reset all the reducers
+   */
+  web3Service.on('network.changed', networkId => {
+    if (getState().network.name !== networkId) {
+      // Set the new network, which should also clean up all reducers
+      // And we need a new account!
+      dispatch(setNetwork(networkId))
+      return web3Service.refreshOrGetAccount()
+    }
+  })
+
+  /**
+   * This is invoked when the web3Service is ready. We can then (re)trigger all past actions.
+   */
+  web3Service.on('ready', () => {
+    while (actions.length > 0) {
+      let action = actions.shift()
+      dispatch(action)
+    }
+  })
+
+  return function(next) {
+    return function(action) {
+      if (
+        !web3Service.ready &&
+        [SET_NETWORK, SET_ACCOUNT].indexOf(action.type) == -1
+      ) {
+        // As long as middleware is not ready
+        // we store the action
+        actions.push(action)
+        return web3Service.connect({ provider: getState().provider })
+      } else if (action.type === SET_PROVIDER) {
+        web3Service.connect({ provider: action.provider })
       } else if (action.type === CREATE_LOCK) {
-        // Create a lock
-        web3Service.createLock(action.lock, (transaction) => {
-          dispatch(setTransaction(transaction))
-        }).then((lock) => {
-          dispatch(setLock(lock))
-          return web3Service.getAddressBalance(action.lock.creator.address)
-        }).then((balance) => {
-          dispatch(resetAccountBalance(balance))
-        })
+        web3Service.createLock(action.lock, getState().account)
       } else if (action.type === PURCHASE_KEY) {
-        // TODO change data from ''
-        web3Service.purchaseKey(action.lock.address, action.account, action.lock.keyPrice, '', (transaction) => {
-          dispatch(setTransaction(transaction))
-        }).then((key) => {
-          dispatch(setKey(key))
-          return web3Service.getAddressBalance(action.account.address)
-        }).then((balance) => {
-          dispatch(resetAccountBalance(balance))
-        })
-      } else if (action.type === SET_KEY) {
-        lockUnlessKeyIsValid({key: action.key})
+        const account = getState().account
+        const lock = Object.values(getState().locks).find(
+          lock => lock.address === action.key.lock
+        )
+        web3Service.purchaseKey(
+          action.key.lock,
+          action.key.owner,
+          lock.keyPrice,
+          account,
+          action.key.data
+        )
       } else if (action.type === WITHDRAW_FROM_LOCK) {
-        const account = getState().network.account
+        const account = getState().account
         web3Service.withdrawFromLock(action.lock, account)
-          .then((lock) => {
-            return Promise.all([
-              web3Service.getAddressBalance(account.address),
-              web3Service.getAddressBalance(action.lock.address),
-            ])
-          }).then(([accountBalance, lockBalance]) => {
-            account.balance = accountBalance
-            action.lock.balance = lockBalance
-            dispatch(resetAccountBalance(account.balance))
-            dispatch(resetLock(action.lock))
-          })
       }
 
       next(action)
 
-      if (action.type === LOCATION_CHANGE) {
+      if (action.type === ADD_LOCK || action.type == UPDATE_LOCK) {
+        const lock = getState().locks[action.address]
+        if (!lock.pending) {
+          web3Service.getKeyByLockForOwner(
+            lock.address,
+            getState().account.address
+          )
+        }
+      } else if (
+        action.type === LOCATION_CHANGE &&
+        action.payload.location &&
+        action.payload.location.pathname
+      ) {
         // Location was changed, get the matching lock
-        const match = action.payload.pathname.match(/\/lock\/(0x[a-fA-F0-9]{40})$/)
+        const match = action.payload.location.pathname.match(
+          LOCK_PATH_NAME_REGEXP
+        )
         if (match) {
-          web3Service.getLock(match[1]).then((lock) => {
-            dispatch(resetLock(lock)) // update the lock
-          })
+          web3Service.getLock(match[1])
         }
-      } else if (action.type === SET_ACCOUNT) {
-        const lock = getState().network.lock
-        if (lock && lock.address) {
-          // TODO(julien): isn't lock always set anyway?
-          web3Service.getKey(lock.address, action.account)
-            .then((key) => {
-              dispatch(setKey(key))
-            })
-        }
-      } else if (action.type === SET_LOCK) {
-        // Lock was changed, get the matching key
-        web3Service.getKey(action.lock.address, getState().network.account)
-          .then((key) => {
-            dispatch(setKey(key))
-          })
       }
-
     }
   }
 }

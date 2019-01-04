@@ -1,27 +1,23 @@
-import { SET_ACCOUNT, RESET_ACCOUNT_BALANCE } from '../actions/accounts'
-import locksReducer from './locksReducer'
-import transactionReducer from './transactionReducer'
+import { SET_ACCOUNT, UPDATE_ACCOUNT } from '../actions/accounts'
+import { SET_PROVIDER } from '../actions/provider'
+import { SET_NETWORK } from '../actions/network'
 
-const initialState = {}
+export const initialState = null
 
 const accountReducer = (state = initialState, action) => {
+  if ([SET_PROVIDER, SET_NETWORK].indexOf(action.type) > -1) {
+    return initialState
+  }
+
   if (action.type === SET_ACCOUNT) {
     return action.account
   }
 
-  if (action.type === RESET_ACCOUNT_BALANCE) {
-    const account = {
-      ...state,
-    }
-    account.balance = action.balance
-    return account
+  if (action.type == UPDATE_ACCOUNT) {
+    return Object.assign(state, action.update)
   }
 
-  return {
-    ...state,
-    locks: locksReducer(state.locks, action),
-    transaction: transactionReducer(state.transaction, action),
-  }
+  return state
 }
 
 export default accountReducer

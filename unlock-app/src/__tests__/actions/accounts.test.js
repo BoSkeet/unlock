@@ -1,7 +1,11 @@
-import { setAccount, loadAccount, resetAccountBalance, createAccount, SET_ACCOUNT, LOAD_ACCOUNT, RESET_ACCOUNT_BALANCE, CREATE_ACCOUNT } from '../../actions/accounts'
+import {
+  setAccount,
+  updateAccount,
+  SET_ACCOUNT,
+  UPDATE_ACCOUNT,
+} from '../../actions/accounts'
 
 describe('accounts actions', () => {
-
   it('should create an action to set the account', () => {
     const account = {
       address: '0xabc',
@@ -14,31 +18,15 @@ describe('accounts actions', () => {
     expect(setAccount(account)).toEqual(expectedAction)
   })
 
-  it('should create an action to load and account', () => {
-    const privateKey = '0xabc'
+  it('should create an action to update an account', () => {
+    const update = {
+      balance: '1337',
+    }
 
     const expectedAction = {
-      type: LOAD_ACCOUNT,
-      privateKey,
+      type: UPDATE_ACCOUNT,
+      update,
     }
-    expect(loadAccount(privateKey)).toEqual(expectedAction)
+    expect(updateAccount(update)).toEqual(expectedAction)
   })
-
-  it('should create an action to update an account\'s balance', () => {
-    const balance = '1337'
-
-    const expectedAction = {
-      type: RESET_ACCOUNT_BALANCE,
-      balance,
-    }
-    expect(resetAccountBalance(balance)).toEqual(expectedAction)
-  })
-
-  it('should create an action to create an account', () => {
-    const expectedAction = {
-      type: CREATE_ACCOUNT,
-    }
-    expect(createAccount()).toEqual(expectedAction)
-  })
-
 })

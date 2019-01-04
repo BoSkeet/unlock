@@ -3,10 +3,11 @@ pragma solidity 0.4.24;
 /**
  * @title The Unlock contract
  * @author Julien Genestoux (unlock-protocol.com)
- * This smart contract has 2 main roles:
+ * This smart contract has 3 main roles:
  *  1. Distribute discounts to discount token holders
  *  2. Grant dicount tokens to users making referrals and/or publishers granting discounts.
- * In order to achieve these 2 elements, it keeps track of several things such as
+ *  3. Create & deploy Public Lock contracts.
+ * In order to achieve these 3 elements, it keeps track of several things such as
  *  a. Deployed locks addresses and balances of discount tokens granted by each lock.
  *  b. The total network product (sum of all key sales, net of discounts)
  *  c. Total of discounts granted
@@ -25,11 +26,13 @@ pragma solidity 0.4.24;
  *  b. Keeping track of GNP
  */
 
-import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
-import "./Lock.sol";
+import "openzeppelin-eth/contracts/ownership/Ownable.sol";
+import "zos-lib/contracts/Initializable.sol";
+import "./PublicLock.sol";
+import "./interfaces/IUnlock.sol";
 
-
-contract Unlock is Ownable {
+/// @dev Must list the direct base contracts in the order from “most base-like” to “most derived”. https://solidity.readthedocs.io/en/latest/contracts.html?highlight=linearization#multiple-inheritance-and-linearization
+contract Unlock is IUnlock, Initializable, Ownable {
 
   /**
    * The struct for a lock
@@ -61,50 +64,52 @@ contract Unlock is Ownable {
     address indexed newLockAddress
   );
 
-  constructor(
+  // Use initialize instead of a constructor to support proxies (for upgradeability via zos).
+  function initialize(
     address _owner
   )
-    public {
-      owner = _owner;
-      grossNetworkProduct = 0;
-      totalDiscountGranted = 0;
-    }
+    public
+    initializer()
+  {
+    // We must manually initialize Ownable.sol
+    Ownable.initialize(_owner);
+    grossNetworkProduct = 0;
+    totalDiscountGranted = 0;
+  }
 
   /**
   * @dev Create lock
   * This deploys a lock for a creator. It also keeps track of the deployed lock.
   */
   function createLock(
-    Lock.KeyReleaseMechanisms _keyReleaseMechanism,
     uint _expirationDuration,
     uint _keyPrice,
     uint _maxNumberOfKeys
   )
     public
-    returns (Lock lock)
+    returns (ILockCore lock)
   {
 
     // create lock
-    Lock newLock = new Lock(
+    PublicLock newPublicLock = new PublicLock(
       msg.sender,
-      _keyReleaseMechanism,
       _expirationDuration,
       _keyPrice,
       _maxNumberOfKeys
     );
 
     // Assign the new Lock
-    locks[address(newLock)] = LockBalances({
+    locks[address(newPublicLock)] = LockBalances({
       deployed: true,
       totalSales: 0,
       yieldedDiscountTokens: 0
     });
 
     // trigger event
-    emit NewLock(msg.sender, address(newLock));
+    emit NewLock(msg.sender, address(newPublicLock));
 
     // return the created lock
-    return newLock;
+    return newPublicLock;
   }
 
   /**
@@ -119,7 +124,7 @@ contract Unlock is Ownable {
     uint _keyPrice // solhint-disable-line no-unused-vars
   )
     public
-    pure
+    view
     returns (uint discount, uint tokens)
   {
     // TODO: implement me

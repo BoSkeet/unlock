@@ -1,3 +1,5 @@
+import { MONTH_NAMES } from '../constants'
+
 /**
  * Function which computes days, hours, minutes and seconds based on seconds
  * We limit ourselves to days because months and years can becomes messy (variable duration!)
@@ -41,7 +43,8 @@ export function durations(seconds, intervals) {
 export function durationsAsTextFromSeconds(seconds) {
   const d = durations(seconds, {})
   const asArrayOfValues = Object.keys(d).map(duration => {
-    if (d[duration] > 1) {
+    if (d[duration] !== 1) {
+      // Singular should only be used when there is exactly 1; otherwise plural is needed
       return `${d[duration]} ${duration}`
     }
     return `${d[duration]} ${duration.slice(0, -1)}` // remove the s!
@@ -52,5 +55,37 @@ export function durationsAsTextFromSeconds(seconds) {
   if (asArrayOfValues.length === 1) {
     return asArrayOfValues[0]
   }
-  return asArrayOfValues.slice(0, -1).join(', ') + ' and ' + asArrayOfValues.slice(-1)
+  return (
+    asArrayOfValues.slice(0, -1).join(', ') +
+    ' and ' +
+    asArrayOfValues.slice(-1)
+  )
+}
+
+/**
+ * Given a number of seconds, returns an integer number of days (rounding up)
+ * @param seconds
+ * @returns {number}
+ */
+export function secondsAsDays(seconds) {
+  return Math.ceil(seconds / 86400).toString()
+}
+
+/**
+ * Given an epoch timestamp, returns a string of the form 'Month Day, Year' (eg, 'Dec 31, 1980')
+ * @param timestamp
+ * @returns {string}
+ */
+export function expirationAsDate(timestamp) {
+  if (!timestamp) return 'Never'
+  if (timestamp - new Date().getTime() / 1000 < 86400)
+    return durationsAsTextFromSeconds(timestamp)
+
+  let expirationDate = new Date(0)
+  expirationDate.setUTCSeconds(timestamp)
+  let day = expirationDate.getDate()
+  let month = expirationDate.getMonth()
+  let year = expirationDate.getFullYear()
+
+  return MONTH_NAMES[month] + ' ' + day + ', ' + year
 }

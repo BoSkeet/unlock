@@ -1,72 +1,107 @@
 import configure from '../config'
 
 describe('config', () => {
-
-  it('should have the right keys in dev', () => {
-    let config = configure(global)
-    expect(config.requiredNetwork).toEqual(false)
-    expect(config.providers).toEqual({
-      HTTP: {
-        connected: false,
-        headers: undefined,
-        host: 'http://127.0.0.1:8545',
-        timeout: 0,
-      },
+  describe('dev', () => {
+    let config = configure(global, {
+      unlockEnv: 'dev',
+      httpProvider: '127.0.0.1',
     })
-  })
 
-  it('should have the right keys in dev when there is a web3 provider', () => {
-    let config = configure({
-      web3: {
-        currentProvider: {
+    it('should require a dev network', () => {
+      expect(config.isRequiredNetwork(0)).toEqual(false)
+      expect(config.isRequiredNetwork(1)).toEqual(false)
+      expect(config.isRequiredNetwork(4)).toEqual(false)
+      expect(config.isRequiredNetwork(1337)).toEqual(true)
+    })
+
+    it('should have the right keys in dev', () => {
+      expect(config.requiredNetwork).toEqual('Dev')
+      expect(config.providers).toMatchObject({
+        HTTP: {
+          connected: false,
+          headers: undefined,
+          host: 'http://127.0.0.1:8545',
+          timeout: 0,
+        },
+      })
+    })
+
+    it('should have the right keys in dev when there is a web3 provider', () => {
+      config = configure(
+        {
+          web3: {
+            currentProvider: {
+              isMetaMask: true,
+            },
+          },
+        },
+        {
+          unlockEnv: 'dev',
+          httpProvider: '127.0.0.1',
+        }
+      )
+      expect(config.providers).toMatchObject({
+        HTTP: {
+          connected: false,
+          headers: undefined,
+          host: 'http://127.0.0.1:8545',
+          timeout: 0,
+        },
+        Metamask: {
           isMetaMask: true,
         },
-      },
-      location: {
-        hostname: 'localhost',
-      },
-    })
-    expect(config.requiredNetwork).toEqual(false)
-    expect(config.providers).toEqual({
-      HTTP: {
-        connected: false,
-        headers: undefined,
-        host: 'http://127.0.0.1:8545',
-        timeout: 0,
-      },
-      Metamask: {
-        isMetaMask: true,
-      },
+      })
     })
   })
 
-  it('should have the right keys in staging', () => {
-    let config = configure({
-      web3: {
-        currentProvider: {
-          isMetaMask: true,
+  describe('staging', () => {
+    let config = configure(
+      {
+        web3: {
+          currentProvider: {
+            isMetaMask: true,
+          },
         },
       },
-      location: {
-        hostname: 'staging.unlock-protocol.com',
-      },
+      {
+        unlockEnv: 'staging',
+        httpProvider: '127.0.0.1',
+      }
+    )
+
+    it('should require rinkeby', () => {
+      expect(config.isRequiredNetwork(0)).toEqual(false)
+      expect(config.isRequiredNetwork(1)).toEqual(false)
+      expect(config.isRequiredNetwork(4)).toEqual(true)
+      expect(config.isRequiredNetwork(1337)).toEqual(false)
     })
-    expect(config.requiredNetwork).toEqual(4) // Rinkeby
-    expect(config.providers).toEqual({
-      Metamask: {
-        isMetaMask: true,
-      },
+
+    it('should have the right keys ', () => {
+      expect(config.requiredNetwork).toEqual('Rinkeby')
+      expect(config.providers).toMatchObject({
+        Metamask: {
+          isMetaMask: true,
+        },
+      })
     })
   })
 
-  it('should have the right keys in production', () => {
-    let config = configure({
-      location: {
-        hostname: 'unlock-protocol.com',
-      },
+  describe('production', () => {
+    let config = configure(global, {
+      unlockEnv: 'prod',
+      httpProvider: '127.0.0.1',
     })
-    expect(config.requiredNetwork).toEqual(1) // main net
-    expect(config.providers).toEqual({}) // We miss a web3 provider!
-  })
 
+    it('should require mainnet', () => {
+      expect(config.isRequiredNetwork(0)).toEqual(false)
+      expect(config.isRequiredNetwork(1)).toEqual(true)
+      expect(config.isRequiredNetwork(4)).toEqual(false)
+      expect(config.isRequiredNetwork(1337)).toEqual(false)
+    })
+
+    it('should have the right keys in production', () => {
+      expect(config.requiredNetwork).toEqual('Mainnet')
+      expect(config.providers).toEqual({}) // We miss a web3 provider!
+    })
+  })
 })
