@@ -10,3 +10,5 @@ zos.dev-*.json
 # Artifacts
 unlock-app/src/artifacts/
 smart-contracts/build/contracts/*.json
+smart-contracts/coverageEnv/
+smart-contracts/scTopics

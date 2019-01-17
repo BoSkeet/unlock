@@ -19,6 +19,7 @@
     "openzeppelin-eth": "^2.0.2",
     "shelljs": "^0.8.3",
     "solhint": "^1.4.0",
+    "solidity-coverage": "^0.5.11",
     "truffle": "^4.1.15",
     "web3-utils": "^1.0.0-beta.36",
     "zos": "^2.1.0",
@@ -38,10 +39,11 @@
     "remix": "remixd -s contracts --remix-ide http://localhost:8080 --read-only",
     "test": "truffle test --network test",
     "lint": "solhint contracts/**/*.sol",
-    "ci": "npm run lint && npm run test",
+    "ci": "npm run lint && npm run test && npm run coverage",
     "build": "truffle compile --reset",
     "deploy": "truffle deploy",
-    "zos": "zos"
+    "zos": "zos",
+    "coverage": "solidity-coverage"
   },
   "author": "",
   "license": "ISC"
